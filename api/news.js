@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // GET - Website loads saved news
+  // GET
   if (req.method === "GET") {
     try {
       const result = await get("latest-news.json", {
@@ -26,31 +26,71 @@ export default async function handler(req, res) {
       const text = await new Response(result.stream).text();
       const data = JSON.parse(text);
 
+      // Make sure news is always an array
+      if (!Array.isArray(data.news)) {
+        data.news = [
+          {
+            headline: "Daily News",
+            summary: String(data.news || ""),
+            whyItMatters: "",
+            source: "Zapier",
+            url: ""
+          }
+        ];
+      }
+
       return res.status(200).json(data);
 
     } catch (error) {
-      // No saved news yet
-      if (
-        error.message &&
-        error.message.toLowerCase().includes("not found")
-      ) {
-        return res.status(200).json({
-          success: true,
-          news: []
-        });
-      }
-
-      return res.status(500).json({
-        success: false,
-        error: error.message
+      return res.status(200).json({
+        success: true,
+        news: []
       });
     }
   }
 
-  // POST - Zapier sends news
+  // POST
   if (req.method === "POST") {
     try {
       const body = req.body || {};
+
+      let news = body.news || [];
+
+      // If Zapier sends a JSON string containing an array
+      if (typeof news === "string") {
+        try {
+          const parsed = JSON.parse(news);
+
+          if (Array.isArray(parsed)) {
+            news = parsed;
+          } else {
+            news = [
+              {
+                headline: "Daily News",
+                summary: news,
+                whyItMatters: "",
+                source: "Zapier",
+                url: ""
+              }
+            ];
+          }
+        } catch {
+          news = [
+            {
+              headline: "Daily News",
+              summary: news,
+              whyItMatters: "",
+              source: "Zapier",
+              url: ""
+            }
+          ];
+        }
+      }
+
+      // If one object is received
+      if (!Array.isArray(news)) {
+        news = [news];
+      }
 
       const data = {
         success: true,
@@ -58,7 +98,7 @@ export default async function handler(req, res) {
           body.date ||
           new Date().toISOString().split("T")[0],
         updatedAt: new Date().toISOString(),
-        news: body.news || ""
+        news
       };
 
       await put(
