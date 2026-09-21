@@ -26,20 +26,12 @@ export default async function handler(req, res) {
       const text = await new Response(result.stream).text();
       const data = JSON.parse(text);
 
-      // Make sure news is always an array
-      if (!Array.isArray(data.news)) {
-        data.news = [
-          {
-            headline: "Daily News",
-            summary: String(data.news || ""),
-            whyItMatters: "",
-            source: "Zapier",
-            url: ""
-          }
-        ];
-      }
-
-      return res.status(200).json(data);
+      return res.status(200).json({
+        success: true,
+        date: data.date,
+        updatedAt: data.updatedAt,
+        news: Array.isArray(data.news) ? data.news : []
+      });
 
     } catch (error) {
       return res.status(200).json({
@@ -53,44 +45,76 @@ export default async function handler(req, res) {
   if (req.method === "POST") {
     try {
       const body = req.body || {};
-
       let news = body.news || [];
 
-      // If Zapier sends a JSON string containing an array
+      // Convert JSON string from Zapier into an object
       if (typeof news === "string") {
         try {
-          const parsed = JSON.parse(news);
-
-          if (Array.isArray(parsed)) {
-            news = parsed;
-          } else {
-            news = [
-              {
-                headline: "Daily News",
-                summary: news,
-                whyItMatters: "",
-                source: "Zapier",
-                url: ""
-              }
-            ];
-          }
+          news = JSON.parse(news);
         } catch {
-          news = [
-            {
-              headline: "Daily News",
-              summary: news,
-              whyItMatters: "",
-              source: "Zapier",
-              url: ""
-            }
-          ];
+          news = [];
         }
       }
 
-      // If one object is received
+      // Zapier AI output:
+      // { result: { items: [...] }, _agent_meta: {...} }
+      if (news && news.result && Array.isArray(news.result.items)) {
+        news = news.result.items;
+      }
+
+      // If result itself is a string containing JSON
+      if (
+        news &&
+        typeof news === "object" &&
+        news.result &&
+        typeof news.result === "string"
+      ) {
+        try {
+          const parsed = JSON.parse(news.result);
+
+          if (Array.isArray(parsed)) {
+            news = parsed;
+          } else if (Array.isArray(parsed.items)) {
+            news = parsed.items;
+          }
+        } catch {
+          news = [];
+        }
+      }
+
+      // If still not an array, make it an array
       if (!Array.isArray(news)) {
         news = [news];
       }
+
+      // Normalize field names
+      news = news.map(item => ({
+        headline:
+          item.headline ||
+          item.Headline ||
+          "Daily News",
+
+        summary:
+          item.summary ||
+          item.Summary ||
+          "",
+
+        whyItMatters:
+          item.whyItMatters ||
+          item["Why It Matters"] ||
+          "",
+
+        source:
+          item.source ||
+          item.Source ||
+          "Unknown",
+
+        url:
+          item.url ||
+          item.URL ||
+          item["Original Link"] ||
+          ""
+      }));
 
       const data = {
         success: true,
