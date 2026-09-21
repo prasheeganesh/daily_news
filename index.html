@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Daily News Summary</title>
+
+<style>
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f3f6fb;
+  color: #111827;
+}
+
+header {
+  background: #101827;
+  color: white;
+  text-align: center;
+  padding: 60px 20px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 46px;
+}
+
+header p {
+  font-size: 18px;
+  color: #d1d5db;
+}
+
+.container {
+  max-width: 1050px;
+  margin: 45px auto;
+  padding: 0 20px;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+button {
+  background: #2563eb;
+  color: white;
+  border: 0;
+  padding: 13px 22px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.card {
+  background: white;
+  padding: 30px;
+  margin: 25px 0;
+  border-radius: 18px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.08);
+}
+
+.category {
+  display: inline-block;
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.card h2 {
+  font-size: 27px;
+  line-height: 1.4;
+}
+
+.summary {
+  color: #374151;
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.why {
+  margin-top: 20px;
+  padding: 18px;
+  background: #f8fafc;
+  border-left: 4px solid #2563eb;
+  line-height: 1.6;
+}
+
+.source {
+  margin-top: 20px;
+  color: #6b7280;
+}
+
+.read {
+  display: inline-block;
+  margin-top: 18px;
+  color: #2563eb;
+  font-weight: bold;
+}
+
+.status {
+  text-align: center;
+  padding: 40px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<h1>📰 Daily News Summary</h1>
+
+<p>AI-powered daily news from Zapier</p>
+
+</header>
+
+<main class="container">
+
+<div class="top">
+
+<h2>Today's News</h2>
+
+<button onclick="loadNews()">
+🔄 Refresh
+</button>
+
+</div>
+
+<div id="date"></div>
+
+<div id="news">
+
+<div class="status">
+Loading today's news...
+</div>
+
+</div>
+
+</main>
+
+<script>
+
+async function loadNews() {
+
+  const newsBox = document.getElementById("news");
+  const dateBox = document.getElementById("date");
+
+  newsBox.innerHTML =
+    '<div class="status">Loading news...</div>';
+
+  try {
+
+    const response = await fetch("/api/news");
+
+    if (!response.ok) {
+      throw new Error("Unable to connect to Vercel API");
+    }
+
+    const data = await response.json();
+
+    if (!data.news || data.news.length === 0) {
+
+      newsBox.innerHTML = `
+        <div class="status">
+          <h2>📰 No news yet</h2>
+          <p>Run your Zapier automation first.</p>
+        </div>
+      `;
+
+      return;
+    }
+
+    dateBox.innerHTML = `
+      <p style="color:#64748b;font-size:18px;">
+        📅 ${escapeHtml(data.date)}
+      </p>
+    `;
+
+    newsBox.innerHTML = data.news.map(item => `
+
+      <article class="card">
+
+        <div class="category">
+          ${escapeHtml(item.category || "NEWS")}
+        </div>
+
+        <h2>
+          ${escapeHtml(item.headline || "")}
+        </h2>
+
+        <div class="summary">
+          ${escapeHtml(item.summary || "")}
+        </div>
+
+        <div class="why">
+
+          <strong>Why it matters:</strong>
+
+          <br>
+
+          ${escapeHtml(item.whyItMatters || "")}
+
+        </div>
+
+        <div class="source">
+
+          Source:
+          <strong>
+            ${escapeHtml(item.source || "")}
+          </strong>
+
+        </div>
+
+        <a
+          class="read"
+          href="${escapeHtml(item.url || "#")}"
+          target="_blank"
+          rel="noopener"
+        >
+          📰 Read full news →
+        </a>
+
+      </article>
+
+    `).join("");
+
+  }
+
+  catch(error) {
+
+    newsBox.innerHTML = `
+      <div class="status">
+        <h2>⚠️ Error</h2>
+        <p>${escapeHtml(error.message)}</p>
+      </div>
+    `;
+
+  }
+
+}
+
+
+function escapeHtml(value) {
+
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+}
+
+
+loadNews();
+
+</script>
+
+</body>
+
+</html>
